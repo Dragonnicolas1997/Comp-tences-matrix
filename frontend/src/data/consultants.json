@@ -1,0 +1,152 @@
+[
+  {
+    "id": "1",
+    "name": "Sarah Chen",
+    "grade": "Senior",
+    "sectors": ["Banking", "Insurance"],
+    "summary": "Expert en architecture de données avec plus de 12 ans d'expérience dans la conception de solutions analytiques complexes. Spécialisée dans les environnements Cloud et les technologies Big Data comme Databricks et Spark.",
+    "skills": [
+      { "name": "Databricks", "level": 5 },
+      { "name": "Spark", "level": 4 },
+      { "name": "Python", "level": 5 },
+      { "name": "Azure", "level": 4 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 120, "fullMark": 150 },
+      { "subject": "Business", "A": 98, "fullMark": 150 },
+      { "subject": "Strategy", "A": 86, "fullMark": 150 },
+      { "subject": "Leadership", "A": 99, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 85, "fullMark": 150 }
+    ],
+    "certifications": ["Azure Solutions Architect", "Databricks Professional"],
+    "missions": [
+      { "client": "BNP Paribas", "date": "2023 - Present", "description": "Migration of core banking data to Databricks Lakehouse." },
+      { "client": "AXA", "date": "2021 - 2023", "description": "Implementation of a real-time fraud detection system." }
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Marc Lefebvre",
+    "grade": "Confirmé",
+    "sectors": ["Industry", "Retail"],
+    "summary": "Architecte Cloud passionné par l'automatisation et la scalabilité. Expert Terraform et Kubernetes, j'accompagne les entreprises dans leur transition vers des infrastructures cloud-native robustes et sécurisées.",
+    "skills": [
+      { "name": "AWS", "level": 5 },
+      { "name": "Terraform", "level": 5 },
+      { "name": "Kubernetes", "level": 4 },
+      { "name": "DevOps", "level": 4 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 140, "fullMark": 150 },
+      { "subject": "Business", "A": 70, "fullMark": 150 },
+      { "subject": "Strategy", "A": 60, "fullMark": 150 },
+      { "subject": "Leadership", "A": 80, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 90, "fullMark": 150 }
+    ],
+    "certifications": ["AWS Certified Solutions Architect", "CKA"],
+    "missions": [
+      { "client": "Renault", "date": "2022 - 2024", "description": "Global infrastructure automation using Terraform." },
+      { "client": "Carrefour", "date": "2020 - 2022", "description": "Migration to EKS and CI/CD pipeline optimization." }
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Elena Rodriguez",
+    "grade": "Principal",
+    "sectors": ["Banking", "Retail", "Health"],
+    "summary": "Consultante en stratégie digitale avec une forte orientation résultats. J'aide les organisations à naviguer dans la complexité de la transformation numérique en alliant vision stratégique et exécution agile.",
+    "skills": [
+      { "name": "Agile", "level": 5 },
+      { "name": "Change Management", "level": 5 },
+      { "name": "Product Strategy", "level": 4 },
+      { "name": "Governance", "level": 4 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 60, "fullMark": 150 },
+      { "subject": "Business", "A": 140, "fullMark": 150 },
+      { "subject": "Strategy", "A": 145, "fullMark": 150 },
+      { "subject": "Leadership", "A": 130, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 120, "fullMark": 150 }
+    ],
+    "certifications": ["PMP", "Safe Agilist"],
+    "missions": [
+      { "client": "Santander", "date": "2023 - 2024", "description": "Digital transformation roadmap for retail banking." },
+      { "client": "Inditex", "date": "2021 - 2023", "description": "Omnichannel strategy implementation." }
+    ]
+  },
+  {
+    "id": "4",
+    "name": "Thomas Müller",
+    "grade": "Senior",
+    "sectors": ["Industry", "Energy"],
+    "summary": "Spécialiste en cybersécurité dédié à la protection des infrastructures critiques. Expertise pointue en audit de sécurité, pentesting et mise en conformité ISO 27001 dans des secteurs hautement régulés.",
+    "skills": [
+      { "name": "Pentesting", "level": 5 },
+      { "name": "ISO 27001", "level": 4 },
+      { "name": "SIEM", "level": 4 },
+      { "name": "Cloud Security", "level": 5 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 145, "fullMark": 150 },
+      { "subject": "Business", "A": 80, "fullMark": 150 },
+      { "subject": "Strategy", "A": 90, "fullMark": 150 },
+      { "subject": "Leadership", "A": 70, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 85, "fullMark": 150 }
+    ],
+    "certifications": ["CISSP", "CEH"],
+    "missions": [
+      { "client": "Siemens", "date": "2022 - Present", "description": "Security audit of industrial control systems." },
+      { "client": "E.ON", "date": "2020 - 2022", "description": "Implementation of SOC for smart grid infrastructure." }
+    ]
+  },
+  {
+    "id": "5",
+    "name": "Julie Dubois",
+    "grade": "Confirmé",
+    "sectors": ["Retail", "Health"],
+    "summary": "Lead UX Designer convaincue que l'empathie utilisateur est la clé du succès produit. Je crée des expériences mémorables et inclusives en m'appuyant sur une recherche utilisateur rigoureuse et des systèmes de design cohérents.",
+    "skills": [
+      { "name": "Figma", "level": 5 },
+      { "name": "User Research", "level": 5 },
+      { "name": "Design Systems", "level": 4 },
+      { "name": "Accessibility", "level": 4 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 90, "fullMark": 150 },
+      { "subject": "Business", "A": 110, "fullMark": 150 },
+      { "subject": "Strategy", "A": 100, "fullMark": 150 },
+      { "subject": "Leadership", "A": 90, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 140, "fullMark": 150 }
+    ],
+    "certifications": ["NN/g UX Certification"],
+    "missions": [
+      { "client": "Sanofi", "date": "2023 - 2024", "description": "Patient portal redesign and accessibility audit." },
+      { "client": "Decathlon", "date": "2021 - 2023", "description": "Creation of the global design system." }
+    ]
+  },
+  {
+    "id": "6",
+    "name": "Kevin Zhang",
+    "grade": "Junior",
+    "sectors": ["Banking", "Industry"],
+    "summary": "Ingénieur IA spécialisé dans le Deep Learning et le NLP. Je développe des solutions d'intelligence artificielle de pointe pour automatiser des processus métier complexes et extraire de la valeur des données textuelles.",
+    "skills": [
+      { "name": "PyTorch", "level": 5 },
+      { "name": "NLP", "level": 5 },
+      { "name": "LLMs", "level": 4 },
+      { "name": "MLOps", "level": 4 }
+    ],
+    "radarData": [
+      { "subject": "Technical", "A": 148, "fullMark": 150 },
+      { "subject": "Business", "A": 60, "fullMark": 150 },
+      { "subject": "Strategy", "A": 70, "fullMark": 150 },
+      { "subject": "Leadership", "A": 50, "fullMark": 150 },
+      { "subject": "Soft Skills", "A": 80, "fullMark": 150 }
+    ],
+    "certifications": ["Google Professional ML Engineer"],
+    "missions": [
+      { "client": "HSBC", "date": "2023 - Present", "description": "Generative AI for automated document analysis." },
+      { "client": "Rolls-Royce", "date": "2022 - 2023", "description": "Predictive maintenance models for jet engines." }
+    ]
+  }
+]
