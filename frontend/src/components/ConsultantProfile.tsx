@@ -3,7 +3,6 @@ import { Consultant, RadarPoint } from '../types';
 import {
   X,
   Mail,
-  Linkedin,
   Download,
   CheckCircle2,
   Award,
@@ -111,9 +110,6 @@ export const ConsultantProfile: React.FC<ConsultantProfileProps> = ({ consultant
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm">
-                <Linkedin size={20} />
-              </button>
               <button
                 onClick={onClose}
                 className="p-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-xl transition-colors text-slate-600 dark:text-slate-300"

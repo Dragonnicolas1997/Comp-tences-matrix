@@ -115,4 +115,12 @@ def extract_text_from_pptx(file_path_or_bytes) -> str:
     # Clean up excessive whitespace while preserving structure
     result = re.sub(r'\n{3,}', '\n\n', result)
 
+    # Fix mojibake: if UTF-8 text was decoded as Windows-1252, re-encode properly
+    # (PPTX from Windows often produces cp1252 mojibake like "SantÃ©" instead of "Santé")
+    try:
+        fixed = result.encode('cp1252').decode('utf-8')
+        result = fixed
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass  # Not mojibake, keep original
+
     return result

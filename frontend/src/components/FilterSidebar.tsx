@@ -118,21 +118,17 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         </Accordion>
 
         <Accordion title="Compétences" activeCount={filters.skills.length}>
-          <div className="flex flex-wrap gap-2">
-            {availableSkills.map(skill => (
-              <button
-                key={skill}
-                onClick={() => toggleSkill(skill)}
-                className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                  filters.skills.includes(skill)
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {skill}
-              </button>
-            ))}
-          </div>
+          {availableSkills.map(skill => (
+            <label key={skill} className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={filters.skills.includes(skill)}
+                onChange={() => toggleSkill(skill)}
+                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+              />
+              <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{skill}</span>
+            </label>
+          ))}
         </Accordion>
       </div>
     </aside>

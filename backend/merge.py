@@ -19,11 +19,16 @@ _NOISE_TOKENS = frozenset({
 })
 
 
+def _stem(token: str) -> str:
+    """Simple plural stemming: remove trailing 's' on words longer than 3 chars."""
+    return token[:-1] if len(token) > 3 and token.endswith('s') else token
+
+
 def _tokenize(name: str) -> frozenset[str]:
-    """Split a name into normalized lowercase tokens."""
+    """Split a name into normalized lowercase tokens with plural stemming."""
     tokens = set(re.split(r'[\s\-_/,\.()]+', name.lower().strip()))
     tokens.discard('')
-    return frozenset(tokens)
+    return frozenset(_stem(t) for t in tokens)
 
 
 def _are_similar_names(a: str, b: str) -> bool:
@@ -115,12 +120,13 @@ def _merge_string_lists(existing: list[str], new: list[str]) -> list[str]:
 
 
 def _merge_missions(existing: list[dict], new: list[dict]) -> list[dict]:
-    """Merge missions, deduplicating by (client + role + year_end) combo."""
+    """Merge missions, deduplicating by (client + role + year_end + duration) combo."""
     def mission_key(m: dict) -> str:
         client = (m.get("client") or "").lower().strip()
         role = (m.get("role") or "").lower().strip()
         year = str(m.get("year_end") or "")
-        return f"{client}|{role}|{year}"
+        duration = str(m.get("duration_months") or "")
+        return f"{client}|{role}|{year}|{duration}"
 
     merged = {}
     for m in existing:
@@ -188,7 +194,8 @@ def deduplicate_profile_data(data: dict) -> dict:
             client = (m.get("client") or "").lower().strip()
             role = (m.get("role") or "").lower().strip()
             year = str(m.get("year_end") or "")
-            k = f"{client}|{role}|{year}"
+            duration = str(m.get("duration_months") or "")
+            k = f"{client}|{role}|{year}|{duration}"
             if k not in seen:
                 seen[k] = m
         return list(seen.values())

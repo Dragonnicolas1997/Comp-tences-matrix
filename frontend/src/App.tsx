@@ -9,8 +9,6 @@ import { Consultant, Filters } from './types';
 import { fetchConsultants } from './services/apiService';
 import {
   Users,
-  LayoutGrid,
-  List,
   Moon,
   Sun,
   ArrowUpDown,
@@ -52,7 +50,9 @@ export default function App() {
   // --- Fuzzy name matching (token-based) ---
   const areSimilarNames = useCallback((a: string, b: string): boolean => {
     const NOISE = new Set(['ms', 'microsoft', 'adobe', 'google', 'aws', 'amazon', 'ibm', 'oracle', 'sap', 'apache']);
-    const tokenize = (s: string) => new Set(s.toLowerCase().trim().split(/[\s\-_/,\.()]+/).filter(Boolean));
+    // Normalize: lowercase, strip trailing 's' for plural handling (but keep short words intact)
+    const stem = (t: string) => t.length > 3 && t.endsWith('s') ? t.slice(0, -1) : t;
+    const tokenize = (s: string) => new Set(s.toLowerCase().trim().split(/[\s\-_/,\.()]+/).filter(Boolean).map(stem));
     if (a.toLowerCase().trim() === b.toLowerCase().trim()) return true;
     const ta = tokenize(a), tb = tokenize(b);
     if (ta.size === 0 || tb.size === 0) return false;
@@ -75,14 +75,88 @@ export default function App() {
     return result.sort();
   }, [areSimilarNames]);
 
+  // Detect vague company descriptions vs real company names
+  const isRealCompany = useCallback((name: string): boolean => {
+    const lower = name.toLowerCase().trim();
+    const vagueWords = [
+      'grand', 'grande', 'grands', 'grandes',
+      'groupe', 'leader', 'opérateur', 'operateur',
+      'entreprise', 'cabinet', 'marketplace',
+      'acteur', 'société', 'societe',
+      'mondial', 'mondiale', 'européen', 'européenne',
+      'international', 'internationale',
+      'industriel', 'industrielle',
+      'majeur', 'majeure',
+      'compte', 'institution',
+    ];
+    const words = lower.split(/\s+/);
+    // If any word is a vague descriptor, it's not a real company name
+    if (words.some(w => vagueWords.includes(w))) return false;
+    // Very long names are likely descriptions (e.g. "opérateur postal européen")
+    if (words.length > 4) return false;
+    return true;
+  }, []);
+
+  // Extract a sector keyword from a vague client description
+  const extractSectorFromClient = useCallback((name: string): string | null => {
+    const lower = name.toLowerCase().trim();
+    const sectorMap: [RegExp, string][] = [
+      [/industri/,        'Industrie'],
+      [/transport/,       'Transport'],
+      [/hôtel|hotel|hospitali/, 'Hôtellerie'],
+      [/assurance/,       'Assurance'],
+      [/banque|bancaire/, 'Banque'],
+      [/beauté|beauty|cosmétique/, 'Luxe'],
+      [/postal/,          'Transport'],
+      [/presse|média|media/, 'Média'],
+      [/télécom|telecom|téléphon|telephon/, 'Telecom'],
+      [/énergie|energie|energy/, 'Énergie'],
+      [/santé|sante|pharma|médical|medical/, 'Santé'],
+      [/retail|distribution|commerce/, 'Retail'],
+      [/immobilier/,      'Immobilier'],
+      [/aéro|aero|aviation/, 'Aérospatial'],
+      [/auto|véhicul|vehicul/, 'Automobile'],
+      [/aliment|agro|food/, 'Agroalimentaire'],
+      [/conseil|consult/, 'Conseil'],
+      [/financ|invest/,   'Finance'],
+      [/technolog|numérique|numerique|digital|tech/, 'Tech'],
+      [/luxe/,            'Luxe'],
+      [/défense|defense|militaire/, 'Défense'],
+      [/public|état|etat|gouvern|européen|européenne/, 'Secteur public'],
+    ];
+    for (const [regex, sector] of sectorMap) {
+      if (regex.test(lower)) return sector;
+    }
+    return null;
+  }, []);
+
   // Available filters derived from loaded consultants (fuzzy dedup)
+  const allClients = useMemo(() =>
+    consultants.flatMap(c => c.missions.map(m => m.client)).filter(Boolean),
+  [consultants]);
+
+  // Map vague client names to sector keywords
+  const sectorsFromClients = useMemo(() => {
+    const sectors: string[] = [];
+    for (const client of allClients) {
+      if (!isRealCompany(client)) {
+        const sector = extractSectorFromClient(client);
+        if (sector) sectors.push(sector);
+      }
+    }
+    return sectors;
+  }, [allClients, isRealCompany, extractSectorFromClient]);
+
   const availableSectors = useMemo(() =>
-    deduplicateNames(consultants.flatMap(c => c.sectors.map(s => s.name))),
-  [consultants, deduplicateNames]);
+    deduplicateNames([
+      ...consultants.flatMap(c => c.sectors.map(s => s.name)),
+      ...sectorsFromClients,
+    ]),
+  [consultants, sectorsFromClients, deduplicateNames]);
 
   const availableCompanies = useMemo(() =>
-    deduplicateNames(consultants.flatMap(c => c.missions.map(m => m.client)).filter(Boolean)),
-  [consultants, deduplicateNames]);
+    deduplicateNames(allClients.filter(c => isRealCompany(c))),
+  [allClients, isRealCompany, deduplicateNames]);
 
   const availableSkills = useMemo(() =>
     deduplicateNames(consultants.flatMap(c => [
@@ -129,10 +203,19 @@ export default function App() {
 
     // Sidebar filters (fuzzy matching)
     return source.filter(c => {
+      // Sectors: match on sector names + mapped sectors from vague client descriptions
+      const cSectorNames = [...c.sectors.map(s => s.name)];
+      for (const m of c.missions) {
+        if (m.client && !isRealCompany(m.client)) {
+          const mapped = extractSectorFromClient(m.client);
+          if (mapped) cSectorNames.push(mapped);
+        }
+      }
       const matchesSectors = filters.sectors.length === 0 ||
-        filters.sectors.some(fs => c.sectors.some(s => areSimilarNames(s.name, fs)));
+        filters.sectors.some(fs => cSectorNames.some(s => areSimilarNames(s, fs)));
+      // Companies: only match real company names
       const matchesCompanies = filters.companies.length === 0 ||
-        filters.companies.some(fc => c.missions.some(m => areSimilarNames(m.client, fc)));
+        filters.companies.some(fc => c.missions.some(m => m.client && isRealCompany(m.client) && areSimilarNames(m.client, fc)));
       const allSkillNames = [
         ...c.skills_technical.map(sk => sk.name),
         ...c.skills_functional.map(sk => sk.name),
@@ -142,7 +225,7 @@ export default function App() {
         filters.skills.every(fs => allSkillNames.some(sk => areSimilarNames(sk, fs)));
       return matchesSectors && matchesCompanies && matchesSkills;
     });
-  }, [searchQuery, consultants, filters, areSimilarNames, consultantSearchText]);
+  }, [searchQuery, consultants, filters, areSimilarNames, consultantSearchText, isRealCompany, extractSectorFromClient]);
 
   const selectedConsultant = useMemo(() =>
     consultants.find(c => c.id === selectedConsultantId) || null,
@@ -160,7 +243,7 @@ export default function App() {
       <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-background'}`}>
       {/* Header */}
       <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-10">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-xs">TM</div>
@@ -209,7 +292,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {activeTab === 'cvs' ? (
           <CVManager onDataChanged={loadConsultants} />
         ) : (
@@ -237,16 +320,14 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="mt-6 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto"
+              className="mt-6 flex flex-wrap justify-center gap-2 max-w-4xl mx-auto"
             >
               <span className="w-full text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Recherche rapide par compétence</span>
               {availableSkills.slice(0, 8).map(skill => (
                 <button
                   key={skill}
                   onClick={() => {
-                    const newSkills = filters.skills.includes(skill)
-                      ? filters.skills.filter(s => s !== skill)
-                      : [...filters.skills, skill];
+                    const newSkills = filters.skills.includes(skill) ? [] : [skill];
                     setFilters({ ...filters, skills: newSkills });
                   }}
                   className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
@@ -280,16 +361,6 @@ export default function App() {
                 {displayedConsultants.length} résultats trouvés
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-                  <button className="p-1.5 bg-white dark:bg-slate-700 shadow-sm rounded-md text-primary dark:text-white">
-                    <LayoutGrid size={16} />
-                  </button>
-                  <button className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                    <List size={16} />
-                  </button>
-                </div>
-              </div>
             </div>
 
             <AnimatePresence mode="popLayout">
@@ -302,38 +373,7 @@ export default function App() {
                   <Loader2 size={40} className="text-primary animate-spin mb-4" />
                   <p className="text-slate-500 dark:text-slate-400 font-medium">Chargement des consultants...</p>
                 </motion.div>
-              ) : hasActiveSearch ? (
-                displayedConsultants.length > 0 ? (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                  >
-                    {displayedConsultants.map((consultant) => (
-                      <ConsultantCard
-                        key={consultant.id}
-                        consultant={consultant}
-                        onClick={setSelectedConsultantId}
-                      />
-                    ))}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-20 text-center"
-                  >
-                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                      <SearchIcon size={32} className="text-slate-300 dark:text-slate-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Aucun consultant trouvé</h3>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-xs">
-                      Essayez de modifier votre recherche pour trouver d'autres profils.
-                    </p>
-                  </motion.div>
-                )
-              ) : (
+              ) : consultants.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -343,12 +383,42 @@ export default function App() {
                     <SearchIcon size={40} className="text-primary/40" />
                   </div>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">
-                    {consultants.length > 0 ? 'Prêt à trouver votre expert ?' : 'Importez vos premiers CVs'}
+                    Importez vos premiers CVs
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 max-w-sm font-medium">
-                    {consultants.length > 0
-                      ? 'Saisissez une compétence ou sélectionnez-en une ci-dessus pour commencer.'
-                      : 'Glissez un fichier .pptx dans la zone ci-dessus pour démarrer.'}
+                    Glissez un fichier .pptx dans la zone ci-dessus pour démarrer.
+                  </p>
+                </motion.div>
+              ) : displayedConsultants.length > 0 ? (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+                >
+                  {displayedConsultants.map((consultant) => (
+                    <ConsultantCard
+                      key={consultant.id}
+                      consultant={consultant}
+                      onClick={setSelectedConsultantId}
+                      activeFilterSkills={filters.skills}
+                      activeFilterSectors={filters.sectors}
+                      activeFilterCompanies={filters.companies}
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                    <SearchIcon size={32} className="text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Aucun consultant trouvé</h3>
+                  <p className="text-slate-500 dark:text-slate-400 max-w-xs">
+                    Essayez de modifier votre recherche pour trouver d'autres profils.
                   </p>
                 </motion.div>
               )}
@@ -367,7 +437,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-20 py-12 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-10 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-white font-bold text-[10px]">TM</div>
             <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">TalentMatrix</span>

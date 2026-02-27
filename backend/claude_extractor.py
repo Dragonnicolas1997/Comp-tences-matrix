@@ -70,7 +70,7 @@ RÈGLES D'EXTRACTION :
 
 5. **sectors** : Secteurs d'activité identifiés à travers les missions ET les clients mentionnés. Noms standards : Banque, Assurance, Retail, Santé, Industrie, Énergie, Telecom, Secteur Public, Média, Luxe, Automobile, Transport, Immobilier, Conseil, Tech.
 
-6. **missions** : C'EST LA PARTIE LA PLUS IMPORTANTE. Extrais TOUTES les expériences professionnelles (jusqu'à 10). Cherche dans TOUT le texte :
+6. **missions** : C'EST LA PARTIE LA PLUS IMPORTANTE. Extrais ABSOLUMENT TOUTES les expériences professionnelles sans aucune limite de nombre. Chaque mission distincte (client différent, période différente, ou rôle différent) doit être une entrée séparée. Cherche dans TOUT le texte :
    - Les noms de clients ou entreprises
    - Les dates, durées, périodes (ex: "2022-2024", "janv. 2023 - mars 2024", "18 mois")
    - Les rôles/postes occupés
@@ -120,7 +120,7 @@ def extract_consultant_profile(raw_text: str, filename: str = "") -> ConsultantC
 
     message = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[
             {

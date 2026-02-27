@@ -56,6 +56,16 @@ class Consultant(Base):
     # Raw text extracted from the PPTX (for full-text search)
     raw_text = Column(Text, nullable=True)
 
+    @staticmethod
+    def _fix_mojibake(text: str | None) -> str | None:
+        """Fix UTF-8 text that was decoded as Windows-1252 (cp1252 mojibake)."""
+        if not text:
+            return text
+        try:
+            return text.encode('cp1252').decode('utf-8')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            return text
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -75,5 +85,5 @@ class Consultant(Base):
             "missions": self.missions or [],
             "education": self.education or [],
             "summary": self.summary,
-            "raw_text": self.raw_text,
+            "raw_text": self._fix_mojibake(self.raw_text),
         }
