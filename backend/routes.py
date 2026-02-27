@@ -32,8 +32,9 @@ from semantic_search import search_consultants
 
 router = APIRouter(prefix="/api")
 
-# Directory to save uploaded CVs
-CVS_DIR = os.path.join(os.path.dirname(__file__), "data", "cvs")
+# Directory to save uploaded CVs (follows DATABASE_PATH dir in production)
+_data_dir = os.path.dirname(os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "data", "talent_matrix.db")))
+CVS_DIR = os.path.join(_data_dir, "cvs")
 os.makedirs(CVS_DIR, exist_ok=True)
 
 
