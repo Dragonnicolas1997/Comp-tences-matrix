@@ -15,8 +15,9 @@ export const UploadCV: React.FC<UploadCVProps> = ({ onUploadSuccess }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
-    if (!file.name.endsWith('.pptx')) {
-      setError('Seuls les fichiers .pptx sont acceptés');
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith('.pptx') && !lower.endsWith('.pdf')) {
+      setError('Seuls les fichiers .pptx et .pdf sont acceptés');
       return;
     }
     setIsUploading(true);
@@ -56,7 +57,7 @@ export const UploadCV: React.FC<UploadCVProps> = ({ onUploadSuccess }) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pptx"
+          accept=".pptx,.pdf"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
           className="hidden"
         />
@@ -72,7 +73,7 @@ export const UploadCV: React.FC<UploadCVProps> = ({ onUploadSuccess }) => {
           <div className="flex flex-col items-center gap-3">
             <Upload size={32} className="text-slate-400" />
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              Glissez un CV (.pptx) ici ou cliquez pour parcourir
+              Glissez un CV (.pptx ou .pdf) ici ou cliquez pour parcourir
             </p>
             <p className="text-xs text-slate-400">
               Le fichier sera analysé par IA pour extraire le profil consultant

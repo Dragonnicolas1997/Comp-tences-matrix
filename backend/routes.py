@@ -25,10 +25,13 @@ from schemas import (
     SkillStat,
     CVFileInfo,
     CVListResponse,
+    RFPAnalysisResponse,
 )
 from pptx_parser import extract_text_from_pptx
+from pdf_parser import extract_text_from_pdf
 from claude_extractor import extract_consultant_profile
 from semantic_search import search_consultants
+from rfp_analyzer import analyze_rfp, build_rfp_search_query
 
 router = APIRouter(prefix="/api")
 
@@ -42,9 +45,10 @@ os.makedirs(CVS_DIR, exist_ok=True)
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_cv(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Upload a PPTX CV, save file, extract profile via Claude, store in DB."""
-    if not file.filename.endswith(".pptx"):
-        raise HTTPException(status_code=400, detail="Seuls les fichiers .pptx sont acceptés")
+    """Upload a PPTX or PDF CV, save file, extract profile via Claude, store in DB."""
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith(".pptx") and not filename_lower.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Seuls les fichiers .pptx et .pdf sont acceptés")
 
     file_bytes = await file.read()
 
@@ -59,8 +63,11 @@ async def upload_cv(file: UploadFile = File(...), db: Session = Depends(get_db))
     with open(save_path, "wb") as f:
         f.write(file_bytes)
 
-    # 2. Extract raw text from PPTX
-    raw_text = extract_text_from_pptx(file_bytes)
+    # 2. Extract raw text (PPTX or PDF)
+    if filename_lower.endswith(".pdf"):
+        raw_text = extract_text_from_pdf(file_bytes)
+    else:
+        raw_text = extract_text_from_pptx(file_bytes)
 
     if len(raw_text.strip()) < 50:
         raise HTTPException(
@@ -134,6 +141,84 @@ async def upload_cv(file: UploadFile = File(...), db: Session = Depends(get_db))
     return UploadResponse(
         message=f"CV de {consultant.first_name} {consultant.last_name} importé avec succès",
         consultant=ConsultantResponse(**consultant.to_dict()),
+    )
+
+
+# ----- POST /api/analyze-rfp -----
+
+@router.post("/analyze-rfp", response_model=RFPAnalysisResponse)
+async def analyze_rfp_endpoint(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload a PDF RFP, extract requirements via Claude, match consultants."""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Seuls les fichiers .pdf sont acceptés")
+
+    file_bytes = await file.read()
+
+    if len(file_bytes) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fichier trop volumineux (max {MAX_UPLOAD_SIZE_MB}MB)",
+        )
+
+    # 1. Extract raw text from PDF
+    raw_text = extract_text_from_pdf(file_bytes)
+
+    if len(raw_text.strip()) < 50:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Texte insuffisant extrait de '{file.filename}' ({len(raw_text)} caractères). "
+            "Le fichier est peut-être basé sur des images ou protégé.",
+        )
+
+    logger.info(f"Texte extrait du PDF {file.filename}: {len(raw_text)} caractères")
+
+    # 2. Extract structured requirements via Claude (call #1)
+    try:
+        requirements = analyze_rfp(raw_text)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de l'analyse IA : {str(e)}",
+        )
+
+    # 3. Build search query from requirements and match consultants
+    all_consultants = db.query(Consultant).all()
+    if not all_consultants:
+        return RFPAnalysisResponse(
+            message=f"Appel d'offres '{requirements.title}' analysé avec succès. Aucun consultant en base pour le matching.",
+            requirements=requirements,
+            matching_results=[],
+            total_matches=0,
+        )
+
+    consultants_dicts = [c.to_dict() for c in all_consultants]
+
+    # Pre-filter by minimum experience if specified
+    if requirements.min_experience_years:
+        consultants_dicts = [
+            c for c in consultants_dicts
+            if (c.get("years_experience") or 0) >= requirements.min_experience_years
+        ]
+
+    if not consultants_dicts:
+        return RFPAnalysisResponse(
+            message=f"Appel d'offres '{requirements.title}' analysé. Aucun consultant ne correspond au minimum d'expérience requis ({requirements.min_experience_years} ans).",
+            requirements=requirements,
+            matching_results=[],
+            total_matches=0,
+        )
+
+    # 4. Semantic search using the RFP query (call #2)
+    search_query = build_rfp_search_query(requirements)
+    results = search_consultants(search_query, consultants_dicts)
+
+    return RFPAnalysisResponse(
+        message=f"Appel d'offres '{requirements.title}' analysé avec succès. {len(results)} profil(s) correspondant(s) trouvé(s).",
+        requirements=requirements,
+        matching_results=results,
+        total_matches=len(results),
     )
 
 
@@ -347,7 +432,7 @@ def list_cvs(db: Session = Depends(get_db)):
         return CVListResponse(files=[], total=0)
 
     for filename in os.listdir(CVS_DIR):
-        if not filename.endswith(".pptx"):
+        if not (filename.endswith(".pptx") or filename.endswith(".pdf")):
             continue
         filepath = os.path.join(CVS_DIR, filename)
         stat = os.stat(filepath)
@@ -384,9 +469,14 @@ def download_cv(filename: str):
     if not os.path.isfile(real_path):
         raise HTTPException(status_code=404, detail="Fichier non trouvé")
 
+    if filename.lower().endswith(".pdf"):
+        media_type = "application/pdf"
+    else:
+        media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
     return FileResponse(
         real_path,
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        media_type=media_type,
         filename=filename,
     )
 

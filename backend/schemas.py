@@ -145,3 +145,28 @@ class CVFileInfo(BaseModel):
 class CVListResponse(BaseModel):
     files: list[CVFileInfo]
     total: int
+
+
+# --- RFP (Appel d'Offres) Analysis ---
+
+class RFPRequirements(BaseModel):
+    title: str = ""
+    summary: str = ""
+    skills_technical: list[str] = []
+    skills_functional: list[str] = []
+    sectors: list[str] = []
+    min_experience_years: Optional[int] = None
+    certifications: list[str] = []
+    languages: list[str] = []
+    team_size: Optional[str] = None
+    budget_info: Optional[str] = None
+    timeline: Optional[str] = None
+    location: Optional[str] = None
+    key_criteria: list[str] = []
+
+
+class RFPAnalysisResponse(BaseModel):
+    message: str
+    requirements: RFPRequirements
+    matching_results: list[SearchResultItem] = []
+    total_matches: int = 0

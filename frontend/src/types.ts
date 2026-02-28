@@ -127,3 +127,28 @@ export interface CVListResponse {
   files: CVFileInfo[];
   total: number;
 }
+
+// --- RFP (Appel d'Offres) Analysis ---
+
+export interface RFPRequirements {
+  title: string;
+  summary: string;
+  skills_technical: string[];
+  skills_functional: string[];
+  sectors: string[];
+  min_experience_years?: number;
+  certifications: string[];
+  languages: string[];
+  team_size?: string;
+  budget_info?: string;
+  timeline?: string;
+  location?: string;
+  key_criteria: string[];
+}
+
+export interface RFPAnalysisResponse {
+  message: string;
+  requirements: RFPRequirements;
+  matching_results: SearchResultItem[];
+  total_matches: number;
+}

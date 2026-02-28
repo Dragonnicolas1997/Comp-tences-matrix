@@ -5,6 +5,8 @@ import { ConsultantCard } from './components/ConsultantCard';
 import { ConsultantProfile } from './components/ConsultantProfile';
 import { UploadCV } from './components/UploadCV';
 import { CVManager } from './components/CVManager';
+import { RFPAnalyzer } from './components/RFPAnalyzer';
+import { Dashboard } from './components/Dashboard';
 import { Consultant, Filters } from './types';
 import { fetchConsultants } from './services/apiService';
 import {
@@ -14,7 +16,9 @@ import {
   ArrowUpDown,
   Search as SearchIcon,
   FileText,
-  Loader2
+  FileSearch,
+  Loader2,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -30,7 +34,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>({ sectors: [], companies: [], skills: [] });
   const [selectedConsultantId, setSelectedConsultantId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'search' | 'cvs'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'cvs' | 'rfp' | 'dashboard'>('search');
 
   // Load consultants from API
   const loadConsultants = useCallback(async () => {
@@ -274,6 +278,28 @@ export default function App() {
                 <FileText size={13} />
                 <span className="hidden sm:inline">CVs</span>
               </button>
+              <button
+                onClick={() => setActiveTab('rfp')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  activeTab === 'rfp'
+                    ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <FileSearch size={13} />
+                <span className="hidden sm:inline">Appels d'Offres</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <LayoutDashboard size={13} />
+                <span className="hidden sm:inline">Dashboard</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-4">
@@ -295,6 +321,10 @@ export default function App() {
       <main className="w-full mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {activeTab === 'cvs' ? (
           <CVManager onDataChanged={loadConsultants} />
+        ) : activeTab === 'rfp' ? (
+          <RFPAnalyzer onSelectConsultant={setSelectedConsultantId} />
+        ) : activeTab === 'dashboard' ? (
+          <Dashboard consultants={consultants} isRealCompany={isRealCompany} />
         ) : (
         <>
         {/* Hero Section */}

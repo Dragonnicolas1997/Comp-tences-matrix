@@ -1,4 +1,4 @@
-import { Consultant, SearchResponse, Stats, CVListResponse } from '../types';
+import { Consultant, SearchResponse, Stats, CVListResponse, RFPAnalysisResponse } from '../types';
 
 const API_BASE = '/api';
 
@@ -94,4 +94,18 @@ export async function downloadCV(filename: string): Promise<void> {
 export async function deleteCV(filename: string): Promise<void> {
   const res = await fetch(`${API_BASE}/cvs/${encodeURIComponent(filename)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Suppression échouée');
+}
+
+export async function analyzeRFP(file: File): Promise<RFPAnalysisResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/analyze-rfp`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Analyse échouée' }));
+    throw new Error(err.detail || 'Analyse échouée');
+  }
+  return res.json();
 }
