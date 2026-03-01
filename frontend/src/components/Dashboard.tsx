@@ -108,6 +108,24 @@ function SkillTooltipContent({ active, payload, label }: any) {
   );
 }
 
+// ─── Names tooltip (shown on bar hover) ─────────────────────────
+function NamesTooltip({ names, label }: { names: string[]; label: string }) {
+  if (!names.length) return null;
+  const shown = names.slice(0, 8);
+  const remaining = names.length - shown.length;
+  return (
+    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-xl text-xs whitespace-nowrap pointer-events-none">
+      <p className="font-bold text-slate-900 dark:text-white mb-1">{label}</p>
+      {shown.map((name, i) => (
+        <p key={i} className="text-slate-600 dark:text-slate-300">{name}</p>
+      ))}
+      {remaining > 0 && (
+        <p className="text-slate-400 dark:text-slate-500 mt-1">+{remaining} autre{remaining > 1 ? 's' : ''}</p>
+      )}
+    </div>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════
@@ -266,6 +284,93 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
 
   const [hoveredCell, setHoveredCell] = useState<{ sector: string; skill: string; count: number } | null>(null);
 
+  // ── Consultant name lookups (for tooltips) ─────────────────
+  const consultantName = (c: Consultant) => `${c.first_name} ${c.last_name}`;
+
+  const sectorConsultants = useMemo(() => {
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => c.sectors.forEach(s => {
+      const names = map.get(s.name) ?? [];
+      names.push(consultantName(c));
+      map.set(s.name, names);
+    }));
+    return map;
+  }, [consultants]);
+
+  const expConsultants = useMemo(() => {
+    const buckets = [
+      { name: '0-3 ans', min: 0, max: 3 },
+      { name: '3-5 ans', min: 3, max: 5 },
+      { name: '5-8 ans', min: 5, max: 8 },
+      { name: '8-12 ans', min: 8, max: 12 },
+      { name: '12+ ans', min: 12, max: Infinity },
+    ];
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => {
+      const y = c.years_experience ?? 0;
+      const b = buckets.find(b => y >= b.min && y < b.max) ?? buckets[buckets.length - 1];
+      const names = map.get(b.name) ?? [];
+      names.push(consultantName(c));
+      map.set(b.name, names);
+    });
+    return map;
+  }, [consultants]);
+
+  const techSkillConsultants = useMemo(() => {
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => c.skills_technical.forEach(s => {
+      const names = map.get(s.name) ?? [];
+      names.push(consultantName(c));
+      map.set(s.name, names);
+    }));
+    return map;
+  }, [consultants]);
+
+  const funcSkillConsultants = useMemo(() => {
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => c.skills_functional.forEach(s => {
+      const names = map.get(s.name) ?? [];
+      names.push(consultantName(c));
+      map.set(s.name, names);
+    }));
+    return map;
+  }, [consultants]);
+
+  const companyConsultants = useMemo(() => {
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => c.missions.forEach(m => {
+      if (m.client && isRealCompany(m.client)) {
+        const names = map.get(m.client) ?? [];
+        if (!names.includes(consultantName(c))) names.push(consultantName(c));
+        map.set(m.client, names);
+      }
+    }));
+    return map;
+  }, [consultants, isRealCompany]);
+
+  const heatmapConsultants = useMemo(() => {
+    const map = new Map<string, string[]>();
+    consultants.forEach(c => {
+      const cSectors = c.sectors.map(s => s.name);
+      const cSkills = [
+        ...c.skills_technical.map(s => s.name),
+        ...c.skills_functional.map(s => s.name),
+      ];
+      for (const sec of cSectors) {
+        for (const sk of cSkills) {
+          const key = `${sec.toLowerCase()}||${sk.toLowerCase()}`;
+          const names = map.get(key) ?? [];
+          names.push(consultantName(c));
+          map.set(key, names);
+        }
+      }
+    });
+    return map;
+  }, [consultants]);
+
+  // Generic hover state for bar tooltips
+  const [hoveredBar, setHoveredBar] = useState<{ section: string; key: string } | null>(null);
+
   // ── Empty state ──────────────────────────────────────────────
   if (consultants.length === 0) {
     return (
@@ -317,8 +422,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
           <div className="space-y-2.5">
             {sectorData.map((d, i) => {
               const pct = sectorData[0].count > 0 ? (d.count / sectorData[0].count) * 100 : 0;
+              const isHovered = hoveredBar?.section === 'sector' && hoveredBar.key === d.name;
               return (
-                <div key={d.name} className="flex items-center gap-3">
+                <div
+                  key={d.name}
+                  className="relative flex items-center gap-3 cursor-default"
+                  onMouseEnter={() => setHoveredBar({ section: 'sector', key: d.name })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <span className="w-28 shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 text-right truncate" title={d.name}>
                     {d.name}
                   </span>
@@ -336,6 +447,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                   <span className="w-20 text-xs text-slate-500 dark:text-slate-400">
                     {d.count} consultant{d.count !== 1 ? 's' : ''}
                   </span>
+                  {isHovered && <NamesTooltip names={sectorConsultants.get(d.name) ?? []} label={d.name} />}
                 </div>
               );
             })}
@@ -355,8 +467,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                 'bg-emerald-500 dark:bg-emerald-400',
                 'bg-amber-500 dark:bg-amber-400',
               ];
+              const isHovered = hoveredBar?.section === 'exp' && hoveredBar.key === d.name;
               return (
-                <div key={d.name} className="flex items-center gap-3">
+                <div
+                  key={d.name}
+                  className="relative flex items-center gap-3 cursor-default"
+                  onMouseEnter={() => setHoveredBar({ section: 'exp', key: d.name })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <span className="w-20 shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 text-right">
                     {d.name}
                   </span>
@@ -374,6 +492,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                   <span className="w-20 text-xs text-slate-500 dark:text-slate-400">
                     {d.count} consultant{d.count !== 1 ? 's' : ''}
                   </span>
+                  {isHovered && <NamesTooltip names={expConsultants.get(d.name) ?? []} label={d.name} />}
                 </div>
               );
             })}
@@ -388,8 +507,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
           <div className="space-y-2.5">
             {techSkillData.map((d, i) => {
               const pct = techSkillData[0].count > 0 ? (d.count / techSkillData[0].count) * 100 : 0;
+              const isHovered = hoveredBar?.section === 'tech' && hoveredBar.key === d.name;
               return (
-                <div key={d.name} className="group flex items-center gap-3">
+                <div
+                  key={d.name}
+                  className="relative group flex items-center gap-3 cursor-default"
+                  onMouseEnter={() => setHoveredBar({ section: 'tech', key: d.name })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <span className="w-28 shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 text-right truncate" title={d.name}>
                     {d.name}
                   </span>
@@ -407,6 +532,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                   <span className="w-20 text-[10px] text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
                     Niv. {d.avgLevel.toFixed(1)}/5
                   </span>
+                  {isHovered && <NamesTooltip names={techSkillConsultants.get(d.name) ?? []} label={d.name} />}
                 </div>
               );
             })}
@@ -418,8 +544,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
           <div className="space-y-2.5">
             {funcSkillData.map((d, i) => {
               const pct = funcSkillData[0].count > 0 ? (d.count / funcSkillData[0].count) * 100 : 0;
+              const isHovered = hoveredBar?.section === 'func' && hoveredBar.key === d.name;
               return (
-                <div key={d.name} className="group flex items-center gap-3">
+                <div
+                  key={d.name}
+                  className="relative group flex items-center gap-3 cursor-default"
+                  onMouseEnter={() => setHoveredBar({ section: 'func', key: d.name })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <span className="w-28 shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 text-right truncate" title={d.name}>
                     {d.name}
                   </span>
@@ -437,6 +569,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                   <span className="w-20 text-[10px] text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
                     Niv. {d.avgLevel.toFixed(1)}/5
                   </span>
+                  {isHovered && <NamesTooltip names={funcSkillConsultants.get(d.name) ?? []} label={d.name} />}
                 </div>
               );
             })}
@@ -500,12 +633,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                               onMouseLeave={() => setHoveredCell(null)}
                             >
                               <div className={`w-2.5 h-2.5 rounded-full transition-transform hover:scale-[2] ${dotClass(count, heatmapData.maxVal)}`} />
-                              {hoveredCell?.sector === sector && hoveredCell?.skill === skill && (
-                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg text-xs whitespace-nowrap pointer-events-none">
-                                  <p className="font-bold text-slate-900 dark:text-white">{sector} + {skill}</p>
-                                  <p className="text-slate-600 dark:text-slate-300">{count} consultant{count !== 1 ? 's' : ''}</p>
-                                </div>
-                              )}
+                              {hoveredCell?.sector === sector && hoveredCell?.skill === skill && (() => {
+                                const names = heatmapConsultants.get(key) ?? [];
+                                const shown = names.slice(0, 8);
+                                const remaining = names.length - shown.length;
+                                return (
+                                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-xl text-xs whitespace-nowrap pointer-events-none">
+                                    <p className="font-bold text-slate-900 dark:text-white">{sector} + {skill}</p>
+                                    {shown.map((name, i) => (
+                                      <p key={i} className="text-slate-600 dark:text-slate-300">{name}</p>
+                                    ))}
+                                    {remaining > 0 && (
+                                      <p className="text-slate-400 dark:text-slate-500 mt-1">+{remaining} autre{remaining > 1 ? 's' : ''}</p>
+                                    )}
+                                    {names.length === 0 && (
+                                      <p className="text-slate-400 dark:text-slate-500">Aucun consultant</p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </td>
                         );
@@ -529,8 +675,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
           <div className="space-y-2.5">
             {companyData.map((d, i) => {
               const pct = companyData[0].count > 0 ? (d.count / companyData[0].count) * 100 : 0;
+              const isHovered = hoveredBar?.section === 'company' && hoveredBar.key === d.name;
               return (
-                <div key={d.name} className="flex items-center gap-3">
+                <div
+                  key={d.name}
+                  className="relative flex items-center gap-3 cursor-default"
+                  onMouseEnter={() => setHoveredBar({ section: 'company', key: d.name })}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <span className="w-32 shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 text-right truncate" title={d.name}>
                     {d.name}
                   </span>
@@ -548,6 +700,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ consultants, isRealCompany
                   <span className="w-16 text-xs text-slate-500 dark:text-slate-400">
                     {d.count} mission{d.count !== 1 ? 's' : ''}
                   </span>
+                  {isHovered && <NamesTooltip names={companyConsultants.get(d.name) ?? []} label={d.name} />}
                 </div>
               );
             })}
