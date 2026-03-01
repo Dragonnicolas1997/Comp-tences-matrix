@@ -225,8 +225,12 @@ export default function App() {
         ...c.skills_functional.map(sk => sk.name),
         ...c.soft_skills,
       ];
+      const fullText = consultantSearchText(c);
       const matchesSkills = filters.skills.length === 0 ||
-        filters.skills.every(fs => allSkillNames.some(sk => areSimilarNames(sk, fs)));
+        filters.skills.every(fs =>
+          allSkillNames.some(sk => areSimilarNames(sk, fs)) ||
+          fullText.includes(fs.toLowerCase())
+        );
       return matchesSectors && matchesCompanies && matchesSkills;
     });
   }, [searchQuery, consultants, filters, areSimilarNames, consultantSearchText, isRealCompany, extractSectorFromClient]);
